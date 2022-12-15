@@ -21,6 +21,7 @@ library(ggplot2)
 library(tigris)
 library(tidycensus)
 library(dplyr)
+library(glue)
 
 # Following is a quick line of code I always include at the beginning of every
 # script that clears out old variables from the global environment, clears
