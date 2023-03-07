@@ -25,12 +25,18 @@ LongLatToUTM<-function(x,y,zone){
 }
 #https://www.ncleg.gov/Redistricting
 
-nc.cos <- tigris::counties("NC", year = 2020)
+nc.cos <- tigris::counties(state = "NC", cb = T, year = 2021)
+
 nc.cgd_2022 <- shapefiles::read.shapefile("Interim Congressional")
-nc.plc.2020 <- tigris::places(state = "NC") %>%
+
+nc.plc.2020 <- tigris::places(state = "NC", year = 2021) %>%
   sf::st_centroid()
-nc.cgd_2020 <- tigris::congressional_districts("NC", year = 2020)
-nc.bnd_2020 <- tigris::states()
+
+nc.cgd_2020 <- tigris::congressional_districts(state = "NC", cb = T, year = 2020)
+
+nc.cgd_2021 <- tigris::congressional_districts(state = "NC", cb = T, year = 2021)
+
+nc.bnd_2020 <- tigris::states(cb = T, year = 2021)
 nc.bnd_2020 <- nc.bnd_2020[nc.bnd_2020$NAME == "North Carolina",]
 
 nc.plc.2020$geometry %>% class()
@@ -176,23 +182,31 @@ counties.lonlat2$County[counties.lonlat2$group == 8] <- "Gaston"
 
 plot3 <- ggplot() + 
   coord_fixed()+
-  # geom_path(data = counties.all2, 
-  #           aes(x = x2, y = y2, group = group), 
-  #           color = "grey") +
+  geom_path(data = counties.all2,
+            aes(x = x2, y = y2, group = group, color = "Counties"),
+            #color = "grey") +
+  ) +
   geom_path(data = state.lonlat2, 
             aes(x = x2, y = y2, group = group), 
             size = 1, 
             color = "#2F747E")+
   geom_polygon(data = nccd22[nccd22$district %in% 2,], 
-               aes(x = lon, y = lat, group = district), 
-               fill = "#2F747E", color = NA, 
+               aes(x = lon, y = lat, group = district, fill = "Congressional\nDistricts"), 
+               #fill = "#2F747E", 
+               color = NA, 
                alpha = 0.5)+
   geom_path(data = counties.lonlat2[!counties.lonlat2$County %in% c("Gaston", "Lincoln", 
                                                                     "Cleveland", "Caldwell"),], 
-            aes(x = x2, y = y2, group = group), size = 0.7, 
-            color = "#2F747E")+
-  theme(legend.position = "bottom")+
-  theme_nothing()+
+            aes(x = x2, y = y2, group = group, 
+                color = "Selected Counties"),
+            size = 0.7, 
+            #color = "#2F747E")+
+  )+
+  theme(legend.position = "bottom", 
+        legend.direction = "vertical")+
+  scale_color_discrete(name = "Boundaries")+
+  scale_fill_discrete(name = "Boundaries")+
+  #theme_nothing()+
   geom_point(data = major.cities2[major.cities2$NAME %in% 
                                     c("Durham", "Raleigh", "Chapel Hill", "Greensboro", "Charlotte", 
                                       "Fayetteville", "Asheville", 
@@ -202,10 +216,13 @@ plot3 <- ggplot() +
                                       "Rocky Mount", "Rockingham", "Salisbury", 
                                       "Statesville", "Hickory", 
                                       "Shelby", "Hendersonville", "Morganton"),], 
-             aes(x = x2, y = y2)) 
+             aes(x = x2, y = y2, 
+                 color = "Select Cities")) 
 
 
-plot3
+plot3 +
+  labs(title = "Rough Template - Congressional Districts Map", 
+       subtitle = "Showing what data is available")
 
 
 
