@@ -9,12 +9,36 @@ library(shapefiles)
 library(ggplot2)
 library(ggmap) # for theme_nothing()
 library(proj4) # for ptransform()
-#http://web.archive.org/web/20070828201450/http://www.remotesensing.org/geotiff/proj_list/lambert_conic_conformal_2sp.html
-#https://github.com/benda18/R-Examples/blob/master/nearestneighbor.R
+
+
  
 rm(list=ls());cat('\f');gc()
-setwd("C:/Users/TimBender/Documents/R/ncceh/mapping/shapefiles")
 
+
+
+# Vars----
+wd.shapefiles <- "C:/Users/TimBender/Documents/R/ncceh/mapping/shapefiles"
+wd.map_outputs <- NA
+
+urls.df <- data.frame(short_name = c("Coordinate Projection definitions for proj4 package", 
+                                     "GitHub Mapping Example in R", 
+                                     "Official NC Legislative Redistricting Website", 
+                                     "GitHub link for this Script"), 
+                      long_name  = c("how to project to lon/lat using proj4 library in R, specifically coordinate projection type Lambert Conic Conformal (2SP)", 
+                                     "Nearest Neighbor exercise from Tim's personal github", 
+                                     "Most up-to-date information from the State of NC on current legal challenges and current congressional districting boundaries", 
+                                     "From Tim's NCCEH github"), 
+                      url        = c("http://web.archive.org/web/20070828201450/http://www.remotesensing.org/geotiff/proj_list/lambert_conic_conformal_2sp.html",
+                                     "https://github.com/benda18/R-Examples/blob/master/nearestneighbor.R", 
+                                     "https://www.ncleg.gov/Redistricting", 
+                                     "https://github.com/timbender-ncceh/mapping/blob/main/NC_Congresssional_Districts.R")) %>% as_tibble()
+
+
+
+# set wds----
+setwd(wd.shapefiles)
+
+# Functions----
 LongLatToUTM<-function(x,y,zone){
   require(sp)
   xy <- data.frame(ID = 1:length(x), X = x, Y = y)
@@ -23,7 +47,10 @@ LongLatToUTM<-function(x,y,zone){
   res <- spTransform(xy, CRS(paste("+proj=utm +zone=",zone," ellps=WGS84",sep='')))
   return(as.data.frame(res))
 }
-#https://www.ncleg.gov/Redistricting
+
+
+
+#
 
 nc.cos <- tigris::counties(state = "NC", cb = T, year = 2021)
 
