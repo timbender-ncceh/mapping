@@ -64,6 +64,15 @@ nc.state    <- tigris::states(cb = T,
   .[.$NAME == "North Carolina",]
 
 
+# MVP----
+ggplot() + 
+  geom_sf(data = nc.state)+
+  geom_sf(data = nc.counties)+
+  geom_sf(data = nc.places)+
+  labs(title = "MVP_map")
+
+
+
 
 # TIDY ----
 # Congressional Districts----
@@ -81,6 +90,12 @@ for(i in 1:length(nc.cgd_interim[["shp"]][["shp"]])){
 
 nc.cgd_interim_df <- as_tibble(nc.cgd_interim_df)
 rm(nc.cgd_interim)
+
+ggplot() + 
+  geom_polygon(data = nc.cgd_interim_df, 
+               aes(x = X, y = Y, fill = factor(district))) +
+  coord_quickmap()
+
 
 # Places (major cities)----
 major.cities <- nc.places %>%
