@@ -10,16 +10,14 @@ library(ggplot2)
 library(ggmap) # for theme_nothing()
 library(proj4) # for ptransform()
 
-
- 
 rm(list=ls());cat('\f');gc()
 
-
-
 # Vars----
+counties.filter.vector <- NA 
+
+census.year <- 2021
 wd.shapefiles <- "C:/Users/TimBender/Documents/R/ncceh/mapping/shapefiles"
 wd.map_outputs <- NA
-
 urls.df <- data.frame(short_name = c("Coordinate Projection definitions for proj4 package", 
                                      "GitHub Mapping Example in R", 
                                      "Official NC Legislative Redistricting Website", 
@@ -48,45 +46,45 @@ LongLatToUTM<-function(x,y,zone){
   return(as.data.frame(res))
 }
 
+# Data: Congressional District features----
+nc.cgd_interim <- shapefiles::read.shapefile("Interim Congressional")
+nc.cgd_census  <- tigris::congressional_districts(state = "NC", cb = T, year = census.year)
+
+# Data: Base Mapping features-----
+nc.counties <- tigris::counties(state = "NC", 
+                                cb = T, 
+                                year = census.year)
+
+nc.places   <- tigris::places(state = "NC", 
+                              cb = F, 
+                              year = census.year) %>% sf::st_centroid()
+
+nc.state    <- tigris::states(cb = T, 
+                              year = census.year) %>%
+  .[.$NAME == "North Carolina",]
 
 
-#
 
-nc.cos <- tigris::counties(state = "NC", cb = T, year = 2021)
-
-nc.cgd_2022 <- shapefiles::read.shapefile("Interim Congressional")
-
-nc.plc.2020 <- tigris::places(state = "NC", year = 2021) %>%
-  sf::st_centroid()
-
-nc.cgd_2020 <- tigris::congressional_districts(state = "NC", cb = T, year = 2020)
-
-nc.cgd_2021 <- tigris::congressional_districts(state = "NC", cb = T, year = 2021)
-
-nc.bnd_2020 <- tigris::states(cb = T, year = 2021)
-nc.bnd_2020 <- nc.bnd_2020[nc.bnd_2020$NAME == "North Carolina",]
-
-nc.plc.2020$geometry %>% class()
-
-sf::st_centroid(x = nc.plc.2020)
-
-nccd22 <- NULL
-for(i in 1:length(nc.cgd_2022[["shp"]][["shp"]])){
-  nccd22 <- rbind(nccd22, 
-                  data.frame(lon = nc.cgd_2022[["shp"]][["shp"]][[i]]$points$X, 
-                             lat = nc.cgd_2022[["shp"]][["shp"]][[i]]$points$Y, 
-                             district = nc.cgd_2022[["shp"]][["shp"]][[i]]$record))
+# TIDY ----
+# Congressional Districts----
+nc.cgd_interim_df <- NULL
+for(i in 1:length(nc.cgd_interim[["shp"]][["shp"]])){
+  nc.cgd_interim_df <- rbind(nc.cgd_interim_df, 
+                  data.frame(point_order = as.numeric(rownames(nc.cgd_interim[["shp"]][["shp"]][[i]]$points)), 
+                             X           = nc.cgd_interim[["shp"]][["shp"]][[i]]$points$X, 
+                             Y           = nc.cgd_interim[["shp"]][["shp"]][[i]]$points$Y, 
+                             district    = nc.cgd_interim[["shp"]][["shp"]][[i]]$record))
   
   
   
 }
 
-# major cities
-major.cities <- nc.plc.2020 %>%
+nc.cgd_interim_df <- as_tibble(nc.cgd_interim_df)
+rm(nc.cgd_interim)
+
+# Places (major cities)----
+major.cities <- nc.places %>%
   sf::as_Spatial()
-
-major.cities
-
 major.cities2 <- major.cities 
 
 #create a list of xy coordinates from hfa2 to transform
@@ -106,14 +104,12 @@ major.cities2$y2 <- pc$y
 
 major.cities2 <- as.data.frame(major.cities2)
 
-major.cities2 %>%
-  group_by(LSAD) %>%
-  summarise(median(ALAND), 
-            sd(ALAND))
-
+# State----
 # convert state boundary to utm
-state.lonlat <- nc.bnd_2020 %>%
+state.lonlat <- nc.state %>%
   sf::as_Spatial()
+
+rm(nc.state)
 
 state.lonlat2 <- NULL
 for(i in 1:length(state.lonlat@polygons)){
@@ -126,6 +122,7 @@ for(i in 1:length(state.lonlat@polygons)){
                             temp.lonlat)
   rm(temp.lonlat)
 }
+rm(state.lonlat)
 
 #create a list of xy coordinates from hfa2 to transform
 trans_coords <- state.lonlat2[,1:2]
@@ -138,15 +135,39 @@ pc <- ptransform(trans_coords/180*pi,
 state.lonlat2$x2 <- pc$x
 state.lonlat2$y2 <- pc$y
 
+state.lonlat2 <- state.lonlat2 %>% as_tibble()
 
+# Counties-----
 # convert counties to UTM
-counties.all <- nc.cos %>% .$geometry %>% sf::as_Spatial()
- 
-counties.lonlat <- nc.cos %>%
-  .[.$NAME %in% c("Alexander", "Catawba",
-                  "Iredell", "Rutherford", "Burke", 
-                  "Lincoln", "Cleveland", "Gaston", "Caldwell"),] %>%
-  .$geometry %>% sf::as_Spatial()
+# counties.all       <- nc.counties %>% .$geometry %>% sf::as_Spatial()
+# counties.all$NAME <- nc.counties$NAME
+counties.all <- nc.counties %>% sf::as_Spatial()
+
+# Filter counties if applicable
+counties.lonlat <- nc.counties
+
+# if(!is.na(counties.filter.vector)){
+#   counties.lonlat <- counties.lonlat %>%
+#     .[.$NAME %in% counties.filter.vector,]
+#   temp <- counties.lonlat
+#   counties.lonlat <- counties.lonlat %>%
+#     .$geometry %>% sf::as_Spatial()
+#   counties.lonlat$NAME <- temp$NAME
+#   rm(temp)
+# }else{
+#   counties.lonlat <- counties.lonlat 
+#   temp <- counties.lonlat
+#   counties.lonlat <- counties.lonlat %>%
+#     .$geometry %>% sf::as_Spatial()
+#   counties.lonlat$NAME <- temp$NAME
+#   rm(temp)
+# }
+
+if(!is.na(counties.filter.vector)){
+  counties.lonlat <- counties.lonlat[counties.lonlat$NAME %in% counties.filter.vector,]
+}
+
+counties.lonlat
 
 counties.all2 <- NULL
 for(i in 1:length(counties.all@polygons)){
@@ -159,6 +180,7 @@ for(i in 1:length(counties.all@polygons)){
                             temp.lonlat)
   rm(temp.lonlat)
 }
+
 #create a list of xy coordinates from hfa2 to transform
 trans_coords <- counties.all2[,1:2]
 
@@ -170,19 +192,20 @@ pc <- ptransform(trans_coords/180*pi,
 counties.all2$x2 <- pc$x
 counties.all2$y2 <- pc$y
 
-
-
-counties.lonlat2 <- NULL
-for(i in 1:length(counties.lonlat@polygons)){
-  temp.lonlat <- counties.lonlat@polygons[[i]]@Polygons[[1]]@coords %>% 
-    as.data.frame()
-  colnames(temp.lonlat) <- c("x", "y")
-  temp.lonlat$group <- i
-  
-  counties.lonlat2 <- rbind(counties.lonlat2, 
-                            temp.lonlat)
-  rm(temp.lonlat)
-}
+# counties.lonlat2 <- NULL
+# for(i in 1:length(counties.lonlat@polygons)){
+#   sf::st_geometry(counties.lonlat)
+#   counties.lonlat$geometry[[1]]
+#   temp.lonlat <- counties.lonlat@polygons[[i]]@Polygons[[1]]@coords %>% 
+#     as.data.frame()
+#   colnames(temp.lonlat) <- c("x", "y")
+#   temp.lonlat$group <- i
+#   temp.lonlat$NAME <- counties.lonlat$NAME[i]
+#   
+#   counties.lonlat2 <- rbind(counties.lonlat2, 
+#                             temp.lonlat)
+#   rm(temp.lonlat)
+# }
 
 
 #create a list of xy coordinates from hfa2 to transform
@@ -196,16 +219,16 @@ pc <- ptransform(trans_coords/180*pi,
 counties.lonlat2$x2 <- pc$x
 counties.lonlat2$y2 <- pc$y
 
-counties.lonlat2$County <- NA
-counties.lonlat2$County[counties.lonlat2$group == 1] <- "Lincoln"
-counties.lonlat2$County[counties.lonlat2$group == 2] <- "Caldwell"
-counties.lonlat2$County[counties.lonlat2$group == 6] <- "Irdell"
-counties.lonlat2$County[counties.lonlat2$group == 5] <- "Rutherford"
-counties.lonlat2$County[counties.lonlat2$group == 3] <- "Alexander"
-counties.lonlat2$County[counties.lonlat2$group == 4] <- "Cleveland"
-counties.lonlat2$County[counties.lonlat2$group == 7] <- "Catawba"
-counties.lonlat2$County[counties.lonlat2$group == 9] <- "Burke"
-counties.lonlat2$County[counties.lonlat2$group == 8] <- "Gaston"
+
+# counties.lonlat2$County[counties.lonlat2$group == 1] <- "Lincoln"
+# counties.lonlat2$County[counties.lonlat2$group == 2] <- "Caldwell"
+# counties.lonlat2$County[counties.lonlat2$group == 6] <- "Irdell"
+# counties.lonlat2$County[counties.lonlat2$group == 5] <- "Rutherford"
+# counties.lonlat2$County[counties.lonlat2$group == 3] <- "Alexander"
+# counties.lonlat2$County[counties.lonlat2$group == 4] <- "Cleveland"
+# counties.lonlat2$County[counties.lonlat2$group == 7] <- "Catawba"
+# counties.lonlat2$County[counties.lonlat2$group == 9] <- "Burke"
+# counties.lonlat2$County[counties.lonlat2$group == 8] <- "Gaston"
 
 plot3 <- ggplot() + 
   coord_fixed()+
@@ -217,8 +240,8 @@ plot3 <- ggplot() +
             aes(x = x2, y = y2, group = group), 
             size = 1, 
             color = "#2F747E")+
-  geom_polygon(data = nccd22[nccd22$district %in% 2,], 
-               aes(x = lon, y = lat, group = district, fill = "Congressional\nDistricts"), 
+  geom_polygon(data = nc.cgd_interim_df[nc.cgd_interim_df$district %in% 2,], 
+               aes(x = X, y = Y, group = district, fill = "Congressional\nDistricts"), 
                #fill = "#2F747E", 
                color = NA, 
                alpha = 0.5)+
@@ -262,65 +285,3 @@ ggsave(filename = "NC_CongressionalDist_2022.pdf",
 ggsave(filename = "NC_CongressionalDist_2022.ps", 
        plot = plot3, device = "ps")
 
-# I("PROJCS[\"NAD_1983_StatePlane_North_Carolina_FIPS_3200\",GEOGCS[\"GCS_North_American_1983\",DATUM[\"D_North_American_1983\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Lambert_Conformal_Conic\"],PARAMETER[\"False_Easting\",609601.22],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",-79.0],PARAMETER[\"Standard_Parallel_1\",34.33333333333334],PARAMETER[\"Standard_Parallel_2\",36.16666666666666],PARAMETER[\"Latitude_Of_Origin\",33.75],UNIT[\"Meter\",1.0]]") %>%
-#   strsplit(.,",")
-# 
-# 
-# ggplot()+
-#   geom_sf(data = nc.bnd_2020[nc.bnd_2020$NAME == "North Carolina",])+
-#   geom_sf(data = nc.cgd_2020[nc.cgd_2020$CD116FP == "10",], fill = "cyan") + 
-#   geom_sf(data = nc.cos[nc.cos$NAME %in% 
-#                           c("Alexander", "Catawba",
-#                             "Iredell", "Rutherford", "Burke"),], 
-#           fill = NA, color = "red", size = 1) 
-# 
-# # older----
-# nccd22 <- NULL
-# for(i in 1:length(nc.cgd_2022[["shp"]][["shp"]])){
-#   nccd22 <- rbind(nccd22, 
-#         data.frame(lon = nc.cgd_2022[["shp"]][["shp"]][[i]]$points$X, 
-#              lat = nc.cgd_2022[["shp"]][["shp"]][[i]]$points$Y, 
-#              district = nc.cgd_2022[["shp"]][["shp"]][[i]]$record))
-#   
-#   
-#   
-# }
-# 
-# 
-# 
-# #project(nc.cgd_2022, "+proj=NAD83")
-# 
-# 
-# 
-# 
-# library(ggplot2) # for plotting
-# library(cowplot) # for ggsave
-# 
-# 
-# #plot1 <- 
-# plot1 <- ggplot() + 
-#   geom_polygon(data = nccd22, 
-#                aes(x = lon, y = lat, group = district), 
-#                fill = "white", color = "black")+
-#   coord_quickmap() +
-#   theme_nothing() +
-#   geom_polygon(data = LongLatToUTM(x = as.data.frame(nc.cos$geometry[[1]][[1]][[1]])$V1, 
-#                                    y = as.data.frame(nc.cos$geometry[[1]][[1]][[1]])$V2, 
-#                                    zone = 13), 
-#                aes(x = X, y = Y))
-# plot1
-# ggsave(filename = "NC_CongressionalDist_2022.pdf", plot = plot1, 
-#        device = "pdf")
-# 
-# ?ggsave
-# temp.chart <- data.frame(age = c("0-5", "6-17", "18-24", 
-#                   "25-54", "55-64", "65+"), 
-#            experiencing_homelessness = c(105,117,95,618,140,53)) 
-# 
-# temp.chart$age_f <- factor(temp.chart$age, 
-#                            levels = c("0-5", "6-17", "18-24", 
-#                                       "25-54", "55-64", "65+"))
-# 
-# ggplot() + 
-#   geom_col(data = temp.chart, 
-#            aes(x = experiencing_homelessness, y = age_f))
