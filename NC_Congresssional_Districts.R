@@ -90,7 +90,14 @@ census.state          <- tigris::states(cb = T, year = census.year) %>%
 census.counties       <- tigris::counties(state = "NC", cb = T, year = census.year)
 census.coastline      <- tigris::coastline(year = census.year)
 crosswalk_co_reg_dist <- read_csv("https://raw.githubusercontent.com/timbender-ncceh/PIT_HIC/dev/crosswalks/county_district_region_crosswalk.csv")
+census.roads          <- tigris::primary_roads(#state = c("NC", "SC", "VA", "TN"), 
+                                       year = census.year)
 
+# census.roads %>%
+#   .[grepl("Hwy", .$FULLNAME, ignore.case = F),] %>%
+#   mutate(grouping = substr(FULLNAME,0,2)) %>%
+#   group_by(grouping) %>%
+#   summarise(n = n())
 
 # county tidying----
 census.counties2       <- right_join(census.counties, 
