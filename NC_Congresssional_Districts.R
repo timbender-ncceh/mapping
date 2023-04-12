@@ -134,8 +134,9 @@ new_ncleg_interim.cd <- cbind(new_ncleg_interim.cd,
 
 # manual assignment of district names to polygons 
 new_interim.cd_10 <- left_join(new_ncleg_interim.cd, 
-                               data.frame(cd_number2= c(13,1,3,4,5,6,7,8,9), 
-                                          cd_number = c(5,1,8,9,10,11,12,13,14)))
+                               data.frame(cd_number2= c(13,1,3,4,5,6,7,8,9,11,10), 
+                                          cd_number = c(5,1,8,9,10,11,12,13,14,3,2)))
+
 
 # define_bbox for each layer ----
 list.bbox                       <- list()
@@ -182,6 +183,8 @@ plot2bbox(bb.1 = list.bbox[["CD.ncceh.D01"]],
 
 
 
+
+
 # Plot map----
 
 for(i in unique(crosswalk_co_reg_dist$District)){
@@ -222,8 +225,8 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     scale_fill_discrete(name = NULL)+
     scale_x_continuous(name = NULL)+
     scale_y_continuous(name = NULL)+
-    labs(title = "<title>", 
-         subtitle = "<subtitle>")+
+    labs(title = "North Carolina Congressional Districts and NCCEH Balance of State Counties, 2023", 
+         subtitle = glue("Congressional {i}"))+
     coord_sf(xlim = unname(unlist(district_bbox[c("xmin", "xmax")])), 
              ylim = unname(unlist(district_bbox[c("ymin", "ymax")])))
   
