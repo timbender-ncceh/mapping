@@ -173,39 +173,11 @@ list.bbox[["CD.ncceh.D10"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.coun
 list.bbox[["CD.ncceh.D11"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 11",])
 list.bbox[["CD.ncceh.D13"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 13",])
 
-list.bbox
-
-list.bbox[["CD01_final"]]
-
-
-
-
-merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
-           bb2 = list.bbox[["CD.ncleg.D01"]])
-
-
-bbox2polygon()
-
-
-
 plot2bbox(bb.1 = list.bbox[["CD.ncceh.D01"]], 
           bb.2 = list.bbox[["CD.ncleg.D01"]])
 
 
-ggplot() + 
-  geom_polygon(data = bbox2polygon(list.bbox[["CD.ncceh.D01"]]), 
-               aes(x = x, y = y, color = "NCCEH_CD1"), 
-               fill = NA, linewidth = 1) + 
-  geom_polygon(data = bbox2polygon(list.bbox[["CD.ncleg.D01"]]), 
-               aes(x = x, y = y, color = "NCLEG_CD1"), 
-               fill = NA, linewidth = 1, linetype = 2232) +
-  geom_polygon(data = bbox2polygon(merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
-                                              bb2 = list.bbox[["CD.ncleg.D01"]])), 
-               aes(x = x, y = y, color = "merged"), 
-               fill = NA)
-
-
-  # Plot map----
+# Plot map----
 
 for(i in unique(crosswalk_co_reg_dist$District)){
    
