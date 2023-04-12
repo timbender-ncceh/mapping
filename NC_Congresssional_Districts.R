@@ -17,6 +17,14 @@ library(readr)
 rm(list = ls());cat('\f');gc()
 
 # Functions----
+get_bbox <- function(x1, y1){
+  c(xmin = min(x1), 
+    ymin = min(y1), 
+    xmax = max(x1), 
+    ymax = max(y1))
+}
+
+
 
 # Load Projection MODULE
 devtools::source_url(url = "https://raw.githubusercontent.com/timbender-ncceh/mapping/main/modules/MODULE_mapping_project_LonLat2LCC.R?raw=TRUE")
@@ -76,6 +84,10 @@ new_interim_cd.lonlat <- proj_LCC2LonLat(df_LCC = new_interim.cd[,c("X", "Y")])
 new_interim.cd <- cbind(new_interim.cd, 
                         new_interim_cd.lonlat) %>% as_tibble()
 
+# manual assignment of district names to polygons 
+new_interim.cd_10 <- left_join(new_interim.cd, 
+                               data.frame(cd_number2= c(13,1,3,4,5,6,7,8,9), 
+                                          cd_number = c(5,1,8,9,10,11,12,13,14)))
 
 # define_bbox for each layer ----
 list.bbox                       <- list()
@@ -83,49 +95,19 @@ list.bbox[["state_bbox"]]       <- sf::st_bbox(census.state)
 list.bbox[["counties_bbox"]]    <- NA
 list.bbox[["census.counties2"]] <- NA
 
+?st_bbox()
 
 # Plot map----
-# basemap <- ggplot() + 
-#   # geom_sf(data = census.state, 
-#   #         color = NA, fill = "white") + 
-#   # geom_sf(data = county_districts, 
-#   #         aes(fill = District)) +
-#   # geom_sf(data = census.counties, 
-#   #         color = "black", fill = NA)+
-#   # geom_polygon(data = new_interim.cd, 
-#   #              linewidth = 1,
-#   #              color = "black", fill = NA,
-#   #              aes(x = x, y = y, 
-#   #                  group = factor(cd_number))) +
-#   #theme_nothing()+
-#   theme(legend.position = "bottom", 
-#         legend.direction = "vertical", 
-#         axis.text = element_blank(), 
-#         axis.ticks = element_blank())+
-#   scale_color_discrete(name = "Congressional District Boundaries")+
-#   scale_fill_discrete(name = "Congressional District Boundaries")+
-#   scale_x_continuous(name = NULL)+
-#   scale_y_continuous(name = NULL)+
-#   labs(title = "<title>", 
-#        subtitle = "<subtitle>")
 
 
-new_interim.cd_10 <- left_join(new_interim.cd, 
-                               data.frame(cd_number2= c(13,1,3,4,5,6,7,8,9), 
-                                          cd_number = c(5,1,8,9,10,11,12,13,14)))
 
 for(i in unique(crosswalk_co_reg_dist$District)){
-  
-  #dnum <- sample(unique(new_interim.cd$cd_number), size = 1)
-  
+   
   plot <-  ggplot() + 
     geom_sf(data = county_districts[county_districts$District == i,],
             aes(fill = District)) +
     geom_sf(data = census.counties2[census.counties2$District == i,],
             color = "black", fill = NA)+
-    # geom_polygon(data = new_interim.cd_10[new_interim.cd_10$cd_number2 == dnum,], 
-    #              color = "black", fill = NA, linewidth = 1, 
-    #              aes(x = x, y = y))+
     geom_polygon(data = new_interim.cd_10[paste("District",
                                                 new_interim.cd_10$cd_number2,
                                                 sep = " ") == i,],
