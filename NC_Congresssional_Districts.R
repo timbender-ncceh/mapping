@@ -166,7 +166,16 @@ merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]],
 bbox2polygon()
 
 ggplot() + 
-  geom_polygon(data = list.bbox[["CD.ncceh.D01"]])
+  geom_polygon(data = bbox2polygon(list.bbox[["CD.ncceh.D01"]]), 
+               aes(x = x, y = y, color = "NCCEH_CD1"), 
+               fill = NA, linewidth = 1) + 
+  geom_polygon(data = bbox2polygon(list.bbox[["CD.ncleg.D01"]]), 
+               aes(x = x, y = y, color = "NCLEG_CD1"), 
+               fill = NA, linewidth = 1, linetype = 2232) +
+  geom_polygon(data = bbox2polygon(merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
+                                              bb2 = list.bbox[["CD.ncleg.D01"]])), 
+               aes(x = x, y = y, color = "merged"), 
+               fill = NA)
 
 
   # Plot map----
