@@ -23,15 +23,16 @@ get_bbox <- function(x1, y1){
     xmax = max(x1), 
     ymax = max(y1))
 }
+
 merge2bbox <- function(bb1, bb2){
-  data.frame(new_xmin = min(c(bb1[["xmin"]], 
-                              bb2[["xmin"]])), 
-             new_ymin = min(c(bb1[["ymin"]], 
-                              bb2[["ymin"]])), 
-             new_xmax = max(c(bb1[["xmax"]],
-                              bb2[["xmax"]])), 
-             new_ymax = max(c(bb1[["ymax"]], 
-                              bb2[["ymax"]])))
+  data.frame(xmin = min(c(bb1[["xmin"]], 
+                          bb2[["xmin"]])), 
+             ymin = min(c(bb1[["ymin"]], 
+                          bb2[["ymin"]])), 
+             xmax = max(c(bb1[["xmax"]],
+                          bb2[["xmax"]])), 
+             ymax = max(c(bb1[["ymax"]], 
+                          bb2[["ymax"]])))
 }
 
 # Load Projection MODULE
@@ -145,6 +146,12 @@ list.bbox[["CD01_final"]]
 
 merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
            bb2 = list.bbox[["CD.ncleg.D01"]])
+
+bbox2polygon <- function(bb = merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
+                                           bb2 = list.bbox[["CD.ncleg.D01"]])){
+  data.frame(pid = 1:5, 
+             x   = c(bb[]))
+}
 
 ggplot() + 
   geom_polygon(data = list.bbox[["CD.ncceh.D01"]])
