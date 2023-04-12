@@ -155,11 +155,11 @@ bbox2polygon <- function(bb = merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]],
                      unname(unlist(bb["xmax"])), 
                      unname(unlist(bb["xmax"])), 
                      unname(unlist(bb["xmin"]))), 
-             y   = c(unname(bb["ymin"]), 
-                     unname(bb["ymax"]), 
-                     unname(bb["ymax"]), 
-                     unname(bb["ymin"]), 
-                     unname(bb["ymin"])))
+             y   = c(unname(unlist(bb["ymin"])), 
+                     unname(unlist(bb["ymax"])), 
+                     unname(unlist(bb["ymax"])), 
+                     unname(unlist(bb["ymin"])), 
+                     unname(unlist(bb["ymin"]))))
 }
 
 bbox2polygon()
