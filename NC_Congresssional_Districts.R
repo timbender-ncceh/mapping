@@ -86,7 +86,7 @@ setwd(wd.shapefiles)
 # Data----
 ncleg_interim.cd      <- shapefiles::read.shapefile("Interim Congressional")
 census.state          <- tigris::states(cb = T, year = census.year) %>% 
-  .[.$STUSPS %in% c("NC", "SC", "VA", "TN"),]
+  .[.$STUSPS %in% c("NC", "SC", "VA", "TN", "GA"),]
 census.counties       <- tigris::counties(state = "NC", cb = T, year = census.year)
 census.coastline      <- tigris::coastline(year = census.year)
 crosswalk_co_reg_dist <- read_csv("https://raw.githubusercontent.com/timbender-ncceh/PIT_HIC/dev/crosswalks/county_district_region_crosswalk.csv")
@@ -286,6 +286,20 @@ for(i in unique(crosswalk_co_reg_dist$District)){
   # cleanup
   rm(district_bbox,temp.filename)
   
+  # zipup
+  
+  file.remove(c("NC_CD_PDF_files.zip", 
+                "NC_CD_EPS_files.zip"))
+  
+  zip(zipfile = "NC_CD_PDF_files.zip", 
+      files = list.files(pattern = "^cd_plot.*PDF\\.pdf$"))
+  
+  file.remove(list.files(pattern = "^cd_plot.*PDF\\.pdf$"))
+  
+  zip(zipfile = "NC_CD_EPS_files.zip", 
+      files = list.files(pattern = "^cd_plot.*EPS\\.eps$"))
+  
+  file.remove(list.files(pattern = "^cd_plot.*EPS\\.eps$"))
 }
 
 
