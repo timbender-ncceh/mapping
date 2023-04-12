@@ -13,6 +13,7 @@ library(ggmap) # for theme_nothing()
 library(proj4) # for ptransform()
 library(readr)
 library(glue)
+#library(ggrepel)
 
 
 rm(list = ls());cat('\f');gc()
@@ -183,12 +184,16 @@ plot2bbox(bb.1 = list.bbox[["CD.ncceh.D01"]],
 
 
 
+# map labeling----
+labels_county <- census.counties %>% sf::st_centroid()
+labels_CD     <- NA
+labels_states <- NA
 
 
 # Plot map----
 
 for(i in unique(crosswalk_co_reg_dist$District)){
-   
+  
   district_bbox <- merge2bbox(bb1 = sf::st_bbox(obj = ncceh.county_districts[ncceh.county_districts$District == i,]), 
                               bb2 = get_bbox(x1 = new_interim.cd_10[paste("District",
                                                                           new_interim.cd_10$cd_number2,
@@ -228,7 +233,9 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     labs(title = "North Carolina Congressional Districts and NCCEH Balance of State Counties, 2023", 
          subtitle = glue("Congressional {i}"))+
     coord_sf(xlim = unname(unlist(district_bbox[c("xmin", "xmax")])), 
-             ylim = unname(unlist(district_bbox[c("ymin", "ymax")])))
+             ylim = unname(unlist(district_bbox[c("ymin", "ymax")]))) +
+    geom_sf_label(data = labels_county, 
+                  aes(label = NAME))
   
   print(plot)
   #Sys.sleep(3)
