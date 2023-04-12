@@ -195,7 +195,7 @@ for(i in unique(census.counties2$NAME)){
   #print(i)
   statewide_roads <- rbind(statewide_roads,
                       tigris::roads(state = "NC",
-                                    county = i2)) %>%
+                                    county = i)) %>%
     .[.$RTTYP %in% "I" & 
         !is.na(.$RTTYP),]
 }
