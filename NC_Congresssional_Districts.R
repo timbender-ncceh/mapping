@@ -12,6 +12,7 @@ library(ggplot2)
 library(ggmap) # for theme_nothing()
 library(proj4) # for ptransform()
 library(readr)
+library(glue)
 
 
 rm(list = ls());cat('\f');gc()
@@ -206,17 +207,19 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     geom_polygon(data = new_interim.cd_10[paste("District",
                                                 new_interim.cd_10$cd_number2,
                                                 sep = " ") == i,],
-                 linewidth = 1, linetype = 23,
+                 linewidth = 1, linetype = 1,
                  #color = "black", 
                  fill = NA,
                  aes(x = x, y = y, color = "NCLEG CD Bounds",
                      group = factor(cd_number)))+
     theme(legend.position = "bottom", 
-          legend.direction = "vertical", 
+          #legend.direction = "vertical", 
           axis.text = element_blank(), 
           axis.ticks = element_blank())+
-    scale_color_discrete(name = "Congressional District Boundaries")+
-    scale_fill_discrete(name = "Congressional District Boundaries")+
+    #scale_color_discrete(name = "Congressional District Boundaries")+
+    scale_color_manual(name = NULL, 
+                       values = c("black")) + 
+    scale_fill_discrete(name = NULL)+
     scale_x_continuous(name = NULL)+
     scale_y_continuous(name = NULL)+
     labs(title = "<title>", 
