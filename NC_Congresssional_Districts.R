@@ -148,10 +148,21 @@ merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]],
            bb2 = list.bbox[["CD.ncleg.D01"]])
 
 bbox2polygon <- function(bb = merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
-                                           bb2 = list.bbox[["CD.ncleg.D01"]])){
+                                         bb2 = list.bbox[["CD.ncleg.D01"]])){
   data.frame(pid = 1:5, 
-             x   = c(bb[]))
+             x   = c(unname(unlist(bb["xmin"])), 
+                     unname(unlist(bb["xmin"])), 
+                     unname(unlist(bb["xmax"])), 
+                     unname(unlist(bb["xmax"])), 
+                     unname(unlist(bb["xmin"]))), 
+             y   = c(unname(bb["ymin"]), 
+                     unname(bb["ymax"]), 
+                     unname(bb["ymax"]), 
+                     unname(bb["ymin"]), 
+                     unname(bb["ymin"])))
 }
+
+bbox2polygon()
 
 ggplot() + 
   geom_polygon(data = list.bbox[["CD.ncceh.D01"]])
