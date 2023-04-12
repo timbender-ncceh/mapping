@@ -208,6 +208,7 @@ for(i in unique(census.counties$NAME)){
 # Plot map----
 
 for(i in unique(crosswalk_co_reg_dist$District)){  
+  
   district_bbox <- merge2bbox(bb1 = sf::st_bbox(obj = ncceh.county_districts[ncceh.county_districts$District == i,]), 
                               bb2 = get_bbox(x1 = new_interim.cd_10[paste("District",
                                                                           new_interim.cd_10$cd_number2,
@@ -220,7 +221,10 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     # geom_sf(data = census.coastline, 
     #         color = "cyan", 
     #         linewidth = 1) + 
-    geom_sf(data = census.state) + 
+    geom_sf(data = census.state[!census.state$STUSPS %in% "NC",], 
+            fill = "light grey") + 
+    geom_sf(data = census.state[census.state$STUSPS == "NC",], 
+            fill = "dark grey") + 
     geom_sf(data = ncceh.county_districts[ncceh.county_districts$District == i,],
             aes(fill = "NCCEH BoS Counties"), 
             color = "black") +
@@ -235,14 +239,16 @@ for(i in unique(crosswalk_co_reg_dist$District)){
                  fill = NA,
                  aes(x = x, y = y, color = "Congressional District Boundary",
                      group = factor(cd_number)))+
-    geom_sf(data = statewide_roads,
-            color = "maroon", 
-            #linewidth = 1.5, 
-            linetype = 2)+
+    # geom_sf(data = statewide_roads,
+    #         color = "maroon", 
+    #         #linewidth = 1.5, 
+    #         linetype = 2)+
     theme(legend.position = "bottom", 
           #legend.direction = "vertical", 
           axis.text = element_blank(), 
-          axis.ticks = element_blank())+
+          axis.ticks = element_blank(), 
+          panel.background = element_rect(fill = "light blue"), 
+          panel.border = element_rect(color = "black", fill = NA))+
     #scale_color_discrete(name = "Congressional District Boundaries")+
     scale_color_manual(name = NULL, 
                        values = c("black")) + 
