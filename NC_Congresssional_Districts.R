@@ -17,6 +17,21 @@ library(readr)
 rm(list = ls());cat('\f');gc()
 
 # Functions----
+
+bbox2polygon <- function(bb){
+  data.frame(pid = 1:5, 
+             x   = c(unname(unlist(bb["xmin"])), 
+                     unname(unlist(bb["xmin"])), 
+                     unname(unlist(bb["xmax"])), 
+                     unname(unlist(bb["xmax"])), 
+                     unname(unlist(bb["xmin"]))), 
+             y   = c(unname(unlist(bb["ymin"])), 
+                     unname(unlist(bb["ymax"])), 
+                     unname(unlist(bb["ymax"])), 
+                     unname(unlist(bb["ymin"])), 
+                     unname(unlist(bb["ymin"]))))
+}
+
 get_bbox <- function(x1, y1){
   c(xmin = min(x1), 
     ymin = min(y1), 
@@ -147,20 +162,6 @@ list.bbox[["CD01_final"]]
 merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
            bb2 = list.bbox[["CD.ncleg.D01"]])
 
-bbox2polygon <- function(bb = merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]], 
-                                         bb2 = list.bbox[["CD.ncleg.D01"]])){
-  data.frame(pid = 1:5, 
-             x   = c(unname(unlist(bb["xmin"])), 
-                     unname(unlist(bb["xmin"])), 
-                     unname(unlist(bb["xmax"])), 
-                     unname(unlist(bb["xmax"])), 
-                     unname(unlist(bb["xmin"]))), 
-             y   = c(unname(unlist(bb["ymin"])), 
-                     unname(unlist(bb["ymax"])), 
-                     unname(unlist(bb["ymax"])), 
-                     unname(unlist(bb["ymin"])), 
-                     unname(unlist(bb["ymin"]))))
-}
 
 bbox2polygon()
 
