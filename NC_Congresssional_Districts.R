@@ -17,6 +17,27 @@ library(readr)
 rm(list = ls());cat('\f');gc()
 
 # Functions----
+plot2bbox <- function(bb.1, bb.2){
+  require(ggplot2)
+  plot.bb.1  <- bbox2polygon(bb.1)
+  plot.bb.2  <- bbox2polygon(bb.2)
+  plot.merge <- bbox2polygon(merge2bbox(bb1 = bb.1, 
+                                        bb2 = bb.2))
+  
+  out <- ggplot() + 
+    geom_polygon(data = plot.bb.1, 
+                 aes(x = x, y = y, color = "bb1"), 
+                 fill = NA, linewidth = 1)+
+    geom_polygon(data = plot.bb.2, 
+                 aes(x = x, y = y, color = "bb2"), 
+                 fill = NA, linewidth = 1, 
+                 linetype = 2232) +
+    geom_polygon(data = plot.merge, 
+                 aes(x = x, y = y, color = "merged"), 
+                 fill = NA)
+  print(out)
+  
+}
 
 bbox2polygon <- function(bb){
   data.frame(pid = 1:5, 
@@ -164,6 +185,12 @@ merge2bbox(bb1 = list.bbox[["CD.ncceh.D01"]],
 
 
 bbox2polygon()
+
+
+
+plot2bbox(bb.1 = list.bbox[["CD.ncceh.D01"]], 
+          bb.2 = list.bbox[["CD.ncleg.D01"]])
+
 
 ggplot() + 
   geom_polygon(data = bbox2polygon(list.bbox[["CD.ncceh.D01"]]), 
