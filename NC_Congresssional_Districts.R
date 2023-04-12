@@ -83,9 +83,12 @@ setwd(wd.shapefiles)
 
 # Data----
 ncleg_interim.cd      <- shapefiles::read.shapefile("Interim Congressional")
-census.state          <- tigris::states(cb = T, year = census.year) %>% .[.$STUSPS == "NC",]
+census.state          <- tigris::states(cb = T, year = census.year) %>% 
+  .[.$STUSPS %in% c("NC", "SC", "VA", "TN"),]
 census.counties       <- tigris::counties(state = "NC", cb = T, year = census.year)
+census.coastline      <- tigris::coastline(year = census.year)
 crosswalk_co_reg_dist <- read_csv("https://raw.githubusercontent.com/timbender-ncceh/PIT_HIC/dev/crosswalks/county_district_region_crosswalk.csv")
+
 
 # county tidying----
 census.counties2       <- right_join(census.counties, 
@@ -177,21 +180,36 @@ plot2bbox(bb.1 = list.bbox[["CD.ncceh.D01"]],
           bb.2 = list.bbox[["CD.ncleg.D01"]])
 
 
+
 # Plot map----
 
 for(i in unique(crosswalk_co_reg_dist$District)){
    
+  district_bbox <- merge2bbox(bb1 = sf::st_bbox(obj = ncceh.county_districts[ncceh.county_districts$District == i,]), 
+                              bb2 = get_bbox(x1 = new_interim.cd_10[paste("District",
+                                                                          new_interim.cd_10$cd_number2,
+                                                                          sep = " ") == i,]$x, 
+                                             y1 = new_interim.cd_10[paste("District",
+                                                                          new_interim.cd_10$cd_number2,
+                                                                          sep = " ") == i,]$y))
+  
   plot <-  ggplot() + 
+    # geom_sf(data = census.coastline, 
+    #         color = "cyan", 
+    #         linewidth = 1) + 
+    geom_sf(data = census.state) + 
     geom_sf(data = ncceh.county_districts[ncceh.county_districts$District == i,],
-            aes(fill = District)) +
-    geom_sf(data = census.counties2[census.counties2$District == i,],
+            aes(fill = District), 
+            color = "black") +
+    geom_sf(data = census.counties2,
             color = "black", fill = NA)+
     geom_polygon(data = new_interim.cd_10[paste("District",
                                                 new_interim.cd_10$cd_number2,
                                                 sep = " ") == i,],
-                 linewidth = 1,
-                 color = "black", fill = NA,
-                 aes(x = x, y = y,
+                 linewidth = 1, linetype = 23,
+                 #color = "black", 
+                 fill = NA,
+                 aes(x = x, y = y, color = "NCLEG CD Bounds",
                      group = factor(cd_number)))+
     theme(legend.position = "bottom", 
           legend.direction = "vertical", 
@@ -202,10 +220,14 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     scale_x_continuous(name = NULL)+
     scale_y_continuous(name = NULL)+
     labs(title = "<title>", 
-         subtitle = "<subtitle>")
+         subtitle = "<subtitle>")+
+    coord_sf(xlim = unname(unlist(district_bbox[c("xmin", "xmax")])), 
+             ylim = unname(unlist(district_bbox[c("ymin", "ymax")])))
   
   print(plot)
   #Sys.sleep(3)
+  
+  rm(district_bbox)
 }
 
 
