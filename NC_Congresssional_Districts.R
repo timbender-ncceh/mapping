@@ -183,6 +183,8 @@ plot2bbox(bb.1 = list.bbox[["CD.ncceh.D01"]],
           bb.2 = list.bbox[["CD.ncleg.D01"]])
 
 
+# major cities----
+maj.cities <- c("Charlotte", "Asheville", "Raleigh", "Durham", "Chapel Hill")
 
 # map labeling----
 labels_county <- census.counties %>% sf::st_centroid()
@@ -191,7 +193,7 @@ labels_states <- NA
 
 # roads----
 statewide_roads <- NULL
-for(i in unique(census.counties2$NAME)){
+for(i in unique(census.counties$NAME)){
   #print(i)
   statewide_roads <- rbind(statewide_roads,
                       tigris::roads(state = "NC",
@@ -199,6 +201,7 @@ for(i in unique(census.counties2$NAME)){
     .[.$RTTYP %in% "I" & 
         !is.na(.$RTTYP),]
 }
+
 
   
   
@@ -222,7 +225,8 @@ for(i in unique(crosswalk_co_reg_dist$District)){
             aes(fill = "NCCEH BoS Counties"), 
             color = "black") +
     geom_sf(data = census.counties2,
-            color = "black", fill = NA)+
+            color = "black", 
+            fill = NA)+
     geom_polygon(data = new_interim.cd_10[paste("District",
                                                 new_interim.cd_10$cd_number2,
                                                 sep = " ") == i,],
@@ -232,7 +236,9 @@ for(i in unique(crosswalk_co_reg_dist$District)){
                  aes(x = x, y = y, color = "Congressional District Boundary",
                      group = factor(cd_number)))+
     geom_sf(data = statewide_roads,
-            color = "blue", linewidth = 4)+
+            color = "maroon", 
+            #linewidth = 1.5, 
+            linetype = 2)+
     theme(legend.position = "bottom", 
           #legend.direction = "vertical", 
           axis.text = element_blank(), 
@@ -240,7 +246,9 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     #scale_color_discrete(name = "Congressional District Boundaries")+
     scale_color_manual(name = NULL, 
                        values = c("black")) + 
-    scale_fill_discrete(name = NULL)+
+    #scale_fill_discrete(name = NULL)+
+    scale_fill_manual(name = NULL, 
+                      values = c("light green"))+
     scale_x_continuous(name = NULL)+
     scale_y_continuous(name = NULL)+
     labs(title = "North Carolina Congressional Districts and NCCEH Balance of State Counties, 2023", 
@@ -248,10 +256,11 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     coord_sf(xlim = unname(unlist(district_bbox[c("xmin", "xmax")])), 
              ylim = unname(unlist(district_bbox[c("ymin", "ymax")]))) +
     geom_sf_label(data = labels_county[labels_county$NAME %in% 
-                                         census.counties$NAME[census.counties2$District == i],],
-                  size = 2.6,
-                  aes(label = paste(NAME, "Co.", sep = " ")), 
-                  alpha = 0.8);print(plot)
+                                         census.counties2$NAME[census.counties2$District == i],],
+                  size = 2.6, alpha = 0.8,
+                  aes(label = paste(NAME, "Co.", sep = " ")))
+  
+  print(plot)
   #Sys.sleep(3)
   
   rm(district_bbox)
