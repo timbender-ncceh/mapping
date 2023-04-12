@@ -90,14 +90,7 @@ census.state          <- tigris::states(cb = T, year = census.year) %>%
 census.counties       <- tigris::counties(state = "NC", cb = T, year = census.year)
 census.coastline      <- tigris::coastline(year = census.year)
 crosswalk_co_reg_dist <- read_csv("https://raw.githubusercontent.com/timbender-ncceh/PIT_HIC/dev/crosswalks/county_district_region_crosswalk.csv")
-census.roads          <- tigris::primary_roads(#state = c("NC", "SC", "VA", "TN"), 
-                                       year = census.year)
 
-# census.roads %>%
-#   .[grepl("Hwy", .$FULLNAME, ignore.case = F),] %>%
-#   mutate(grouping = substr(FULLNAME,0,2)) %>%
-#   group_by(grouping) %>%
-#   summarise(n = n())
 
 # county tidying----
 census.counties2       <- right_join(census.counties, 
@@ -196,11 +189,22 @@ labels_county <- census.counties %>% sf::st_centroid()
 labels_CD     <- NA
 labels_states <- NA
 
+# roads----
+statewide_roads <- NULL
+for(i in unique(census.counties2$NAME)){
+  #print(i)
+  statewide_roads <- rbind(statewide_roads,
+                      tigris::roads(state = "NC",
+                                    county = i2)) %>%
+    .[.$RTTYP %in% "I" & 
+        !is.na(.$RTTYP),]
+}
 
+  
+  
 # Plot map----
 
-for(i in unique(crosswalk_co_reg_dist$District)){
-  
+for(i in unique(crosswalk_co_reg_dist$District)){  
   district_bbox <- merge2bbox(bb1 = sf::st_bbox(obj = ncceh.county_districts[ncceh.county_districts$District == i,]), 
                               bb2 = get_bbox(x1 = new_interim.cd_10[paste("District",
                                                                           new_interim.cd_10$cd_number2,
@@ -227,6 +231,8 @@ for(i in unique(crosswalk_co_reg_dist$District)){
                  fill = NA,
                  aes(x = x, y = y, color = "Congressional District Boundary",
                      group = factor(cd_number)))+
+    geom_sf(data = statewide_roads,
+            color = "blue", linewidth = 4)+
     theme(legend.position = "bottom", 
           #legend.direction = "vertical", 
           axis.text = element_blank(), 
@@ -241,7 +247,9 @@ for(i in unique(crosswalk_co_reg_dist$District)){
          subtitle = glue("{scales::ordinal(as.numeric(gsub(\"^District \", \"\", i)))} Congressional District"))+
     coord_sf(xlim = unname(unlist(district_bbox[c("xmin", "xmax")])), 
              ylim = unname(unlist(district_bbox[c("ymin", "ymax")]))) +
-    geom_sf_label(data = labels_county, size = 2.6,
+    geom_sf_label(data = labels_county[labels_county$NAME %in% 
+                                         census.counties$NAME[census.counties2$District == i],],
+                  size = 2.6,
                   aes(label = paste(NAME, "Co.", sep = " ")), 
                   alpha = 0.8);print(plot)
   #Sys.sleep(3)
