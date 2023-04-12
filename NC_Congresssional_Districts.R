@@ -196,15 +196,15 @@ statewide_roads <- NULL
 for(i in unique(census.counties$NAME)){
   #print(i)
   statewide_roads <- rbind(statewide_roads,
-                      tigris::roads(state = "NC",
-                                    county = i)) %>%
+                           tigris::roads(state = "NC",
+                                         county = i)) %>%
     .[.$RTTYP %in% "I" & 
         !is.na(.$RTTYP),]
 }
 
 
-  
-  
+
+
 # Plot map----
 
 for(i in unique(crosswalk_co_reg_dist$District)){  
@@ -237,7 +237,8 @@ for(i in unique(crosswalk_co_reg_dist$District)){
                  linewidth = 1, linetype = 1,
                  #color = "black", 
                  fill = NA,
-                 aes(x = x, y = y, color = "Congressional District Boundary",
+                 aes(x = x, y = y, 
+                     color = "Congressional District Boundary",
                      group = factor(cd_number)))+
     # geom_sf(data = statewide_roads,
     #         color = "maroon", 
@@ -254,10 +255,10 @@ for(i in unique(crosswalk_co_reg_dist$District)){
                        values = c("black")) + 
     #scale_fill_discrete(name = NULL)+
     scale_fill_manual(name = NULL, 
-                      values = c("light green"))+
+                      values = c("#2F747E"))+
     scale_x_continuous(name = NULL)+
     scale_y_continuous(name = NULL)+
-    labs(title = "North Carolina Congressional Districts and NCCEH Balance of State Counties, 2023", 
+    labs(title = "North Carolina Congressional Districts and NCCEH BoS Counties, 2023", 
          subtitle = glue("{scales::ordinal(as.numeric(gsub(\"^District \", \"\", i)))} Congressional District"))+
     coord_sf(xlim = unname(unlist(district_bbox[c("xmin", "xmax")])), 
              ylim = unname(unlist(district_bbox[c("ymin", "ymax")]))) +
@@ -269,7 +270,22 @@ for(i in unique(crosswalk_co_reg_dist$District)){
   print(plot)
   #Sys.sleep(3)
   
-  rm(district_bbox)
+  
+  # save images----
+  temp.filename <- glue("cd_plot_{gsub(\" \", \"_\", i)}_{year(Sys.Date())}_PDF.pdf")
+  ggsave(filename = temp.filename, 
+         device = "pdf", 
+         width = 6.32, height = 5.66)
+  
+  temp.filename <- glue("cd_plot_{gsub(\" \", \"_\", i)}_{year(Sys.Date())}_EPS.eps")
+  ggsave(filename = temp.filename, 
+         device = "eps", 
+         width = 6.32, height = 5.66)
+  
+  
+  # cleanup
+  rm(district_bbox,temp.filename)
+  
 }
 
 
