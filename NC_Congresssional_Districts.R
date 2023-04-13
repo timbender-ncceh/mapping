@@ -86,10 +86,12 @@ devtools::source_url(url = "https://raw.githubusercontent.com/timbender-ncceh/ma
 # Data----
 ncleg_interim.cd      <- shapefiles::read.shapefile("Interim Congressional")
 census.state          <- tigris::states(cb = T, year = census.year) %>% 
-                          .[.$STUSPS %in% c("NC", "SC", "VA", "TN", "GA"),]
+  .[.$STUSPS %in% c("NC", "SC", "VA", "TN", "GA"),]
 census.counties       <- tigris::counties(state = "NC", cb = T, year = census.year)
 #census.coastline      <- tigris::coastline(year = census.year)
 crosswalk_co_reg_dist <- read_csv("https://raw.githubusercontent.com/timbender-ncceh/PIT_HIC/dev/crosswalks/county_district_region_crosswalk.csv")
+census.places         <- tigris::places(state = "NC", cb = T, year = census.year) %>%
+  st_centroid()
 
 # roads
 statewide_roads <- NULL
@@ -100,6 +102,34 @@ for(i in unique(census.counties$NAME)){
                                          county = i)) %>%
     .[!(.$RTTYP %in% c("M","S","O", "C") | is.na(.$RTTYP)),]
 }
+
+# major cities tidying----
+census.place_POP <- get_decennial(geography = "place", 
+                                  variables = "P001001", 
+                                  year = 2010,
+                                  summary_var = NULL, 
+                                  state = "NC", geometry = F) 
+
+colnames(census.place_POP)[4] <- "total_pop_2010"
+census.place_POP <- census.place_POP[,c("GEOID", "NAME", "total_pop_2010")]
+
+census.places$place_type <- census.places$NAMELSAD %>% 
+  strsplit(., " ") %>%
+  lapply(., last) %>%
+  unlist() %>% table()
+
+census.places <- left_join(census.places, 
+                           census.place_POP, 
+                           by = "GEOID")
+
+rm(census.place_POP)
+
+slice_max(census.places, 
+          order_by = total_pop_2010, 
+          n = 10)
+
+#maj.cities <- c("Charlotte", "Asheville", "Raleigh", "Durham", "Chapel Hill")
+
 
 # county tidying----
 census.counties2       <- right_join(census.counties, 
@@ -187,21 +217,10 @@ list.bbox[["CD.ncceh.D10"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.coun
 list.bbox[["CD.ncceh.D11"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 11",])
 list.bbox[["CD.ncceh.D13"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 13",])
 
-plot2bbox(bb.1 = list.bbox[["CD.ncceh.D01"]], 
-          bb.2 = list.bbox[["CD.ncleg.D01"]])
-
-
-# major cities----
-maj.cities <- c("Charlotte", "Asheville", "Raleigh", "Durham", "Chapel Hill")
-
 # map labeling----
 labels_county <- census.counties %>% sf::st_centroid()
 labels_CD     <- NA
 labels_states <- NA
-
-
-
-
 
 # Plot map----
 
