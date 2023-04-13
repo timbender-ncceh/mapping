@@ -257,20 +257,24 @@ for(i in unique(crosswalk_co_reg_dist$District)){
                  aes(x = x, y = y, 
                      color = "Congressional District Boundary",
                      group = factor(cd_number)))+
+    # # major roads
     # geom_sf(data = statewide_roads,
-    #         color = "maroon", 
-    #         #linewidth = 1.5, 
-    #         linetype = 2)+
+    #         color = "white",
+    #         #linewidth = 1.5,
+    #         linetype = 1)+
+    # # major cities
+    # geom_sf(data = slice_max(census.places, 
+    #                          order_by = total_pop_2010, 
+    #                          n = 20), 
+    #         shape = 12) +
     theme(legend.position = "bottom", 
           #legend.direction = "vertical", 
           axis.text = element_blank(), 
           axis.ticks = element_blank(), 
           panel.background = element_rect(fill = "light blue"), 
           panel.border = element_rect(color = "black", fill = NA))+
-    #scale_color_discrete(name = "Congressional District Boundaries")+
     scale_color_manual(name = NULL, 
                        values = c("black")) + 
-    #scale_fill_discrete(name = NULL)+
     scale_fill_manual(name = NULL, 
                       values = c("#2F747E"))+
     scale_x_continuous(name = NULL)+
