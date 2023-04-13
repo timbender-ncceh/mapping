@@ -73,8 +73,6 @@ merge2bbox <- function(bb1, bb2){
                           bb2[["ymax"]])))
 }
 
-# Load Projection MODULE
-devtools::source_url(url = "https://raw.githubusercontent.com/timbender-ncceh/mapping/main/modules/MODULE_mapping_project_LonLat2LCC.R?raw=TRUE")
 
 # Vars----
 census.year   <- 2021
@@ -82,21 +80,31 @@ wd.shapefiles <- "C:/Users/TimBender/Documents/R/ncceh/mapping/shapefiles" # dir
 
 # Setup----
 setwd(wd.shapefiles)
+# Load Projection MODULE
+devtools::source_url(url = "https://raw.githubusercontent.com/timbender-ncceh/mapping/main/modules/MODULE_mapping_project_LonLat2LCC.R?raw=TRUE")
 
 # Data----
 ncleg_interim.cd      <- shapefiles::read.shapefile("Interim Congressional")
 census.state          <- tigris::states(cb = T, year = census.year) %>% 
-  .[.$STUSPS %in% c("NC", "SC", "VA", "TN", "GA"),]
+                          .[.$STUSPS %in% c("NC", "SC", "VA", "TN", "GA"),]
 census.counties       <- tigris::counties(state = "NC", cb = T, year = census.year)
-census.coastline      <- tigris::coastline(year = census.year)
+#census.coastline      <- tigris::coastline(year = census.year)
 crosswalk_co_reg_dist <- read_csv("https://raw.githubusercontent.com/timbender-ncceh/PIT_HIC/dev/crosswalks/county_district_region_crosswalk.csv")
 
+# roads
+statewide_roads <- NULL
+for(i in unique(census.counties$NAME)){
+  #print(i)
+  statewide_roads <- rbind(statewide_roads,
+                           tigris::roads(state = "NC",
+                                         county = i)) %>%
+    .[!(.$RTTYP %in% c("M","S","O", "C") | is.na(.$RTTYP)),]
+}
 
 # county tidying----
 census.counties2       <- right_join(census.counties, 
                                      crosswalk_co_reg_dist,
                                      by = c("NAME" = "County"))
-
 
 couty_coc.regions <- census.counties2 %>%
   group_by(`Coc/Region`) %>%
@@ -191,16 +199,6 @@ labels_county <- census.counties %>% sf::st_centroid()
 labels_CD     <- NA
 labels_states <- NA
 
-# roads----
-statewide_roads <- NULL
-for(i in unique(census.counties$NAME)){
-  #print(i)
-  statewide_roads <- rbind(statewide_roads,
-                           tigris::roads(state = "NC",
-                                         county = i)) %>%
-    .[.$RTTYP %in% "I" & 
-        !is.na(.$RTTYP),]
-}
 
 
 
