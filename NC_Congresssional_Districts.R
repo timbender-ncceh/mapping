@@ -1,3 +1,5 @@
+# Libraries----
+library(devtools)
 library(dplyr)
 library(data.table)
 library(tidycensus) 
@@ -9,294 +11,317 @@ library(shapefiles)
 library(ggplot2)
 library(ggmap) # for theme_nothing()
 library(proj4) # for ptransform()
-
-rm(list=ls());cat('\f');gc()
-
-# Vars----
-counties.filter.vector <- NA 
-
-census.year <- 2021
-wd.shapefiles <- "C:/Users/TimBender/Documents/R/ncceh/mapping/shapefiles"
-wd.map_outputs <- NA
-urls.df <- data.frame(short_name = c("Coordinate Projection definitions for proj4 package", 
-                                     "GitHub Mapping Example in R", 
-                                     "Official NC Legislative Redistricting Website", 
-                                     "GitHub link for this Script"), 
-                      long_name  = c("how to project to lon/lat using proj4 library in R, specifically coordinate projection type Lambert Conic Conformal (2SP)", 
-                                     "Nearest Neighbor exercise from Tim's personal github", 
-                                     "Most up-to-date information from the State of NC on current legal challenges and current congressional districting boundaries", 
-                                     "From Tim's NCCEH github"), 
-                      url        = c("http://web.archive.org/web/20070828201450/http://www.remotesensing.org/geotiff/proj_list/lambert_conic_conformal_2sp.html",
-                                     "https://github.com/benda18/R-Examples/blob/master/nearestneighbor.R", 
-                                     "https://www.ncleg.gov/Redistricting", 
-                                     "https://github.com/timbender-ncceh/mapping/blob/main/NC_Congresssional_Districts.R")) %>% as_tibble()
+library(readr)
+library(glue)
+#library(ggrepel)
 
 
-
-# set wds----
-setwd(wd.shapefiles)
+rm(list = ls());cat('\f');gc()
 
 # Functions----
-LongLatToUTM<-function(x,y,zone){
-  require(sp)
-  xy <- data.frame(ID = 1:length(x), X = x, Y = y)
-  coordinates(xy) <- c("X", "Y")
-  proj4string(xy) <- CRS("+proj=longlat +datum=WGS84")  ## for example
-  res <- spTransform(xy, CRS(paste("+proj=utm +zone=",zone," ellps=WGS84",sep='')))
-  return(as.data.frame(res))
-}
-
-# Data: Congressional District features----
-nc.cgd_interim <- shapefiles::read.shapefile("Interim Congressional")
-nc.cgd_census  <- tigris::congressional_districts(state = "NC", cb = T, year = census.year)
-
-# Data: Base Mapping features-----
-nc.counties <- tigris::counties(state = "NC", 
-                                cb = T, 
-                                year = census.year)
-
-nc.places   <- tigris::places(state = "NC", 
-                              cb = F, 
-                              year = census.year) %>% sf::st_centroid()
-
-nc.state    <- tigris::states(cb = T, 
-                              year = census.year) %>%
-  .[.$NAME == "North Carolina",]
-
-
-# MVP----
-ggplot() + 
-  geom_sf(data = nc.state)+
-  geom_sf(data = nc.counties)+
-  geom_sf(data = nc.places)+
-  labs(title = "MVP_map")
-
-
-
-
-# TIDY ----
-# Congressional Districts----
-nc.cgd_interim_df <- NULL
-for(i in 1:length(nc.cgd_interim[["shp"]][["shp"]])){
-  nc.cgd_interim_df <- rbind(nc.cgd_interim_df, 
-                  data.frame(point_order = as.numeric(rownames(nc.cgd_interim[["shp"]][["shp"]][[i]]$points)), 
-                             X           = nc.cgd_interim[["shp"]][["shp"]][[i]]$points$X, 
-                             Y           = nc.cgd_interim[["shp"]][["shp"]][[i]]$points$Y, 
-                             district    = nc.cgd_interim[["shp"]][["shp"]][[i]]$record))
+plot2bbox <- function(bb.1, bb.2){
+  require(ggplot2)
+  plot.bb.1  <- bbox2polygon(bb.1)
+  plot.bb.2  <- bbox2polygon(bb.2)
+  plot.merge <- bbox2polygon(merge2bbox(bb1 = bb.1, 
+                                        bb2 = bb.2))
   
-  
+  out <- ggplot() + 
+    geom_polygon(data = plot.bb.1, 
+                 aes(x = x, y = y, color = "bb1"), 
+                 fill = NA, linewidth = 1)+
+    geom_polygon(data = plot.bb.2, 
+                 aes(x = x, y = y, color = "bb2"), 
+                 fill = NA, linewidth = 1, 
+                 linetype = 2232) +
+    geom_polygon(data = plot.merge, 
+                 aes(x = x, y = y, color = "merged"), 
+                 fill = NA)
+  print(out)
   
 }
 
-nc.cgd_interim_df <- as_tibble(nc.cgd_interim_df)
-rm(nc.cgd_interim)
+bbox2polygon <- function(bb){
+  data.frame(pid = 1:5, 
+             x   = c(unname(unlist(bb["xmin"])), 
+                     unname(unlist(bb["xmin"])), 
+                     unname(unlist(bb["xmax"])), 
+                     unname(unlist(bb["xmax"])), 
+                     unname(unlist(bb["xmin"]))), 
+             y   = c(unname(unlist(bb["ymin"])), 
+                     unname(unlist(bb["ymax"])), 
+                     unname(unlist(bb["ymax"])), 
+                     unname(unlist(bb["ymin"])), 
+                     unname(unlist(bb["ymin"]))))
+}
 
-ggplot() + 
-  geom_polygon(data = nc.cgd_interim_df, 
-               aes(x = X, y = Y, fill = factor(district))) +
-  coord_quickmap()
+get_bbox <- function(x1, y1){
+  c(xmin = min(x1), 
+    ymin = min(y1), 
+    xmax = max(x1), 
+    ymax = max(y1))
+}
+
+merge2bbox <- function(bb1, bb2){
+  data.frame(xmin = min(c(bb1[["xmin"]], 
+                          bb2[["xmin"]])), 
+             ymin = min(c(bb1[["ymin"]], 
+                          bb2[["ymin"]])), 
+             xmax = max(c(bb1[["xmax"]],
+                          bb2[["xmax"]])), 
+             ymax = max(c(bb1[["ymax"]], 
+                          bb2[["ymax"]])))
+}
 
 
-# Places (major cities)----
-major.cities <- nc.places %>%
-  sf::as_Spatial()
-major.cities2 <- major.cities 
+# Vars----
+census.year   <- 2021
+wd.shapefiles <- "C:/Users/TimBender/Documents/R/ncceh/mapping/shapefiles" # directory of shapefiles
 
-#create a list of xy coordinates from hfa2 to transform
-trans_coords <- major.cities2[,c("INTPTLAT", "INTPTLON")] %>%
-  as.data.frame() %>%
-  .[,c(2,1)]
-trans_coords$INTPTLAT <- trans_coords$INTPTLAT %>% as.numeric()
-trans_coords$INTPTLON <- trans_coords$INTPTLON %>% as.numeric()
+# Setup----
+setwd(wd.shapefiles)
+# Load Projection MODULE
+devtools::source_url(url = "https://raw.githubusercontent.com/timbender-ncceh/mapping/main/modules/MODULE_mapping_project_LonLat2LCC.R?raw=TRUE")
 
-#coordinate transformation via projection
-pc <- ptransform(trans_coords/180*pi,
-                 '+proj=latlong +ellps=sphere',
-                 '+proj=lcc +lat_1=34.33333333333334 +lat_2=36.16666666666666 +lat_0=33.75 +lon_0=-79.0 +x_0=609601.22 +y_0=0')
+# Data----
+ncleg_interim.cd      <- shapefiles::read.shapefile("Interim Congressional")
+census.state          <- tigris::states(cb = T, year = census.year) %>% 
+  .[.$STUSPS %in% c("NC", "SC", "VA", "TN", "GA"),]
+census.counties       <- tigris::counties(state = "NC", cb = T, year = census.year)
+#census.coastline      <- tigris::coastline(year = census.year)
+crosswalk_co_reg_dist <- read_csv("https://raw.githubusercontent.com/timbender-ncceh/PIT_HIC/dev/crosswalks/county_district_region_crosswalk.csv")
+census.places         <- tigris::places(state = "NC", cb = T, year = census.year) %>%
+  st_centroid()
 
-major.cities2$x2 <- pc$x
-major.cities2$y2 <- pc$y
+# roads
+statewide_roads <- NULL
+for(i in unique(census.counties$NAME)){
+  #print(i)
+  statewide_roads <- rbind(statewide_roads,
+                           tigris::roads(state = "NC",
+                                         county = i)) %>%
+    .[!(.$RTTYP %in% c("M","S","O", "C") | is.na(.$RTTYP)),]
+}
 
-major.cities2 <- as.data.frame(major.cities2)
+# major cities tidying----
+census.place_POP <- get_decennial(geography = "place", 
+                                  variables = "P001001", 
+                                  year = 2010,
+                                  summary_var = NULL, 
+                                  state = "NC", geometry = F) 
 
-# State----
-# convert state boundary to utm
-state.lonlat <- nc.state %>%
-  sf::as_Spatial()
+colnames(census.place_POP)[4] <- "total_pop_2010"
+census.place_POP <- census.place_POP[,c("GEOID", "NAME", "total_pop_2010")]
 
-rm(nc.state)
+census.places$place_type <- census.places$NAMELSAD %>% 
+  strsplit(., " ") %>%
+  lapply(., last) %>%
+  unlist() %>% table()
 
-state.lonlat2 <- NULL
-for(i in 1:length(state.lonlat@polygons)){
-  temp.lonlat <- state.lonlat@polygons[[i]]@Polygons[[1]]@coords %>% 
-    as.data.frame()
-  colnames(temp.lonlat) <- c("x", "y")
-  temp.lonlat$group <- i
+census.places <- left_join(census.places, 
+                           census.place_POP, 
+                           by = "GEOID")
+
+rm(census.place_POP)
+
+slice_max(census.places, 
+          order_by = total_pop_2010, 
+          n = 10)
+
+#maj.cities <- c("Charlotte", "Asheville", "Raleigh", "Durham", "Chapel Hill")
+
+
+# county tidying----
+census.counties2       <- right_join(census.counties, 
+                                     crosswalk_co_reg_dist,
+                                     by = c("NAME" = "County"))
+
+couty_coc.regions <- census.counties2 %>%
+  group_by(`Coc/Region`) %>%
+  summarise()
+
+ncceh.county_districts <- census.counties2 %>%
+  group_by(District) %>%
+  summarise()
+
+# Interim CD tidying----
+new_ncleg_interim.cd <- NULL
+for(i in 1:length(ncleg_interim.cd[["shp"]][["shp"]])){
+  # check for multi-part CD errors
+  if(ncleg_interim.cd[["shp"]][["shp"]][[i]]$num.parts != 1){
+    stop("update code to account for shape having multiple parts")
+  }
+  # get cd number
+  temp.cd_number <- ncleg_interim.cd[["shp"]][["shp"]][[i]]$record
+  temp.cd_coords <- ncleg_interim.cd[["shp"]][["shp"]][[i]][["points"]]
   
-  state.lonlat2 <- rbind(state.lonlat2, 
-                            temp.lonlat)
-  rm(temp.lonlat)
-}
-rm(state.lonlat)
-
-#create a list of xy coordinates from hfa2 to transform
-trans_coords <- state.lonlat2[,1:2]
-
-#coordinate transformation via projection
-pc <- ptransform(trans_coords/180*pi, 
-                 '+proj=latlong +ellps=sphere',
-                 '+proj=lcc +lat_1=34.33333333333334 +lat_2=36.16666666666666 +lat_0=33.75 +lon_0=-79.0 +x_0=609601.22 +y_0=0')
-
-state.lonlat2$x2 <- pc$x
-state.lonlat2$y2 <- pc$y
-
-state.lonlat2 <- state.lonlat2 %>% as_tibble()
-
-# Counties-----
-# convert counties to UTM
-# counties.all       <- nc.counties %>% .$geometry %>% sf::as_Spatial()
-# counties.all$NAME <- nc.counties$NAME
-counties.all <- nc.counties %>% sf::as_Spatial()
-
-# Filter counties if applicable
-counties.lonlat <- nc.counties
-
-# if(!is.na(counties.filter.vector)){
-#   counties.lonlat <- counties.lonlat %>%
-#     .[.$NAME %in% counties.filter.vector,]
-#   temp <- counties.lonlat
-#   counties.lonlat <- counties.lonlat %>%
-#     .$geometry %>% sf::as_Spatial()
-#   counties.lonlat$NAME <- temp$NAME
-#   rm(temp)
-# }else{
-#   counties.lonlat <- counties.lonlat 
-#   temp <- counties.lonlat
-#   counties.lonlat <- counties.lonlat %>%
-#     .$geometry %>% sf::as_Spatial()
-#   counties.lonlat$NAME <- temp$NAME
-#   rm(temp)
-# }
-
-if(!is.na(counties.filter.vector)){
-  counties.lonlat <- counties.lonlat[counties.lonlat$NAME %in% counties.filter.vector,]
+  # append output data
+  new_ncleg_interim.cd <- rbind(new_ncleg_interim.cd, 
+                                data.frame(I = i, 
+                                           cd_number = temp.cd_number, 
+                                           X = temp.cd_coords$X, 
+                                           Y = temp.cd_coords$Y)) %>%
+    as_tibble()
+  # cleanup 
+  rm(temp.cd_number, temp.cd_coords)
 }
 
-counties.lonlat
+#  project interim CD to lonlat----
+new_ncleg_interim_cd.lonlat <- proj_LCC2LonLat(df_LCC = new_ncleg_interim.cd[,c("X", "Y")])
+new_ncleg_interim.cd <- cbind(new_ncleg_interim.cd, 
+                              new_ncleg_interim_cd.lonlat) %>% as_tibble()
 
-counties.all2 <- NULL
-for(i in 1:length(counties.all@polygons)){
-  temp.lonlat <- counties.all@polygons[[i]]@Polygons[[1]]@coords %>% 
-    as.data.frame()
-  colnames(temp.lonlat) <- c("x", "y")
-  temp.lonlat$group <- i
+# manual assignment of district names to polygons 
+new_interim.cd_10 <- left_join(new_ncleg_interim.cd, 
+                               data.frame(cd_number2= c(13,1,3,4,5,6,7,8,9,11,10), 
+                                          cd_number = c(5,1,8,9,10,11,12,13,14,3,2)))
+
+
+# define_bbox for each layer ----
+list.bbox                       <- list()
+list.bbox[["census.state"]]     <- sf::st_bbox(census.state)
+list.bbox[["census.counties2"]] <- sf::st_bbox(census.counties2)
+
+list.bbox[["CD.ncleg.D01"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == 1 & !is.na(new_interim.cd_10$cd_number2)], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == 1 & !is.na(new_interim.cd_10$cd_number2)])
+list.bbox[["CD.ncleg.D03"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 3"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 3"])
+list.bbox[["CD.ncleg.D04"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 4"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 4"])
+list.bbox[["CD.ncleg.D05"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 5"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 5"])
+list.bbox[["CD.ncleg.D06"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 6"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 6"])
+list.bbox[["CD.ncleg.D07"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 7"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 7"])
+list.bbox[["CD.ncleg.D08"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 8"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 8"])
+list.bbox[["CD.ncleg.D09"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 9"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 9"])
+list.bbox[["CD.ncleg.D10"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 10"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 10"])
+list.bbox[["CD.ncleg.D11"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 11"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 11"])
+list.bbox[["CD.ncleg.D13"]]     <- get_bbox(x1 = new_interim.cd_10$x[new_interim.cd_10$cd_number2 == "District 13"], 
+                                            y1 = new_interim.cd_10$y[new_interim.cd_10$cd_number2 == "District 13"])
+
+list.bbox[["CD.ncceh.D01"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 1",])  
+list.bbox[["CD.ncceh.D03"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 3",])
+list.bbox[["CD.ncceh.D04"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 4",])
+list.bbox[["CD.ncceh.D05"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 5",])
+list.bbox[["CD.ncceh.D06"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 6",])
+list.bbox[["CD.ncceh.D07"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 7",])
+list.bbox[["CD.ncceh.D08"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 8",])
+list.bbox[["CD.ncceh.D09"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 9",])
+list.bbox[["CD.ncceh.D10"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 10",])
+list.bbox[["CD.ncceh.D11"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 11",])
+list.bbox[["CD.ncceh.D13"]]     <- sf::st_bbox(ncceh.county_districts[ncceh.county_districts$District == "District 13",])
+
+# map labeling----
+labels_county <- census.counties %>% sf::st_centroid()
+labels_CD     <- NA
+labels_states <- NA
+
+# Plot map----
+
+for(i in unique(crosswalk_co_reg_dist$District)){  
   
-  counties.all2 <- rbind(counties.all2, 
-                            temp.lonlat)
-  rm(temp.lonlat)
+  district_bbox <- merge2bbox(bb1 = sf::st_bbox(obj = ncceh.county_districts[ncceh.county_districts$District == i,]), 
+                              bb2 = get_bbox(x1 = new_interim.cd_10[paste("District",
+                                                                          new_interim.cd_10$cd_number2,
+                                                                          sep = " ") == i,]$x, 
+                                             y1 = new_interim.cd_10[paste("District",
+                                                                          new_interim.cd_10$cd_number2,
+                                                                          sep = " ") == i,]$y))
+  
+  plot <-  ggplot() + 
+    # geom_sf(data = census.coastline, 
+    #         color = "cyan", 
+    #         linewidth = 1) + 
+    geom_sf(data = census.state[!census.state$STUSPS %in% "NC",], 
+            fill = "light grey") + 
+    geom_sf(data = census.state[census.state$STUSPS == "NC",], 
+            fill = "dark grey") + 
+    geom_sf(data = ncceh.county_districts[ncceh.county_districts$District == i,],
+            aes(fill = "NCCEH BoS Counties"), 
+            color = "black") +
+    geom_sf(data = census.counties2,
+            color = "black", 
+            fill = NA)+
+    geom_polygon(data = new_interim.cd_10[paste("District",
+                                                new_interim.cd_10$cd_number2,
+                                                sep = " ") == i,],
+                 linewidth = 1, linetype = 1,
+                 #color = "black", 
+                 fill = NA,
+                 aes(x = x, y = y, 
+                     color = "Congressional District Boundary",
+                     group = factor(cd_number)))+
+    # # major roads
+    # geom_sf(data = statewide_roads,
+    #         color = "white",
+    #         #linewidth = 1.5,
+    #         linetype = 1)+
+    # # major cities
+    # geom_sf(data = slice_max(census.places, 
+    #                          order_by = total_pop_2010, 
+    #                          n = 20), 
+    #         shape = 12) +
+    theme(legend.position = "bottom", 
+          #legend.direction = "vertical", 
+          axis.text = element_blank(), 
+          axis.ticks = element_blank(), 
+          panel.background = element_rect(fill = "light blue"), 
+          panel.border = element_rect(color = "black", fill = NA))+
+    scale_color_manual(name = NULL, 
+                       values = c("black")) + 
+    scale_fill_manual(name = NULL, 
+                      values = c("#2F747E"))+
+    scale_x_continuous(name = NULL)+
+    scale_y_continuous(name = NULL)+
+    labs(title = "North Carolina Congressional Districts and NCCEH BoS Counties, 2023", 
+         subtitle = glue("{scales::ordinal(as.numeric(gsub(\"^District \", \"\", i)))} Congressional District"))+
+    coord_sf(xlim = unname(unlist(district_bbox[c("xmin", "xmax")])), 
+             ylim = unname(unlist(district_bbox[c("ymin", "ymax")]))) +
+    geom_sf_label(data = labels_county[labels_county$NAME %in% 
+                                         census.counties2$NAME[census.counties2$District == i],],
+                  size = 2.6, alpha = 0.8,
+                  aes(label = paste(NAME, "Co.", sep = " ")))
+  
+  print(plot)
+  #Sys.sleep(3)
+  
+  
+  # save images----
+  temp.filename <- glue("cd_plot_{gsub(\" \", \"_\", i)}_{year(Sys.Date())}_PDF.pdf")
+  ggsave(filename = temp.filename, 
+         device = "pdf", 
+         width = 6.32, height = 5.66)
+  
+  temp.filename <- glue("cd_plot_{gsub(\" \", \"_\", i)}_{year(Sys.Date())}_EPS.eps")
+  ggsave(filename = temp.filename, 
+         device = "eps", 
+         width = 6.32, height = 5.66)
+  
+  
+  # cleanup
+  rm(district_bbox,temp.filename)
+  
+  # zipup
+  
+  file.remove(c("NC_CD_PDF_files.zip", 
+                "NC_CD_EPS_files.zip"))
+  
+  zip(zipfile = "NC_CD_PDF_files.zip", 
+      files = list.files(pattern = "^cd_plot.*PDF\\.pdf$"))
+  
+  file.remove(list.files(pattern = "^cd_plot.*PDF\\.pdf$"))
+  
+  zip(zipfile = "NC_CD_EPS_files.zip", 
+      files = list.files(pattern = "^cd_plot.*EPS\\.eps$"))
+  
+  file.remove(list.files(pattern = "^cd_plot.*EPS\\.eps$"))
 }
 
-#create a list of xy coordinates from hfa2 to transform
-trans_coords <- counties.all2[,1:2]
 
-#coordinate transformation via projection
-pc <- ptransform(trans_coords/180*pi, 
-                 '+proj=latlong +ellps=sphere',
-                 '+proj=lcc +lat_1=34.33333333333334 +lat_2=36.16666666666666 +lat_0=33.75 +lon_0=-79.0 +x_0=609601.22 +y_0=0')
-
-counties.all2$x2 <- pc$x
-counties.all2$y2 <- pc$y
-
-# counties.lonlat2 <- NULL
-# for(i in 1:length(counties.lonlat@polygons)){
-#   sf::st_geometry(counties.lonlat)
-#   counties.lonlat$geometry[[1]]
-#   temp.lonlat <- counties.lonlat@polygons[[i]]@Polygons[[1]]@coords %>% 
-#     as.data.frame()
-#   colnames(temp.lonlat) <- c("x", "y")
-#   temp.lonlat$group <- i
-#   temp.lonlat$NAME <- counties.lonlat$NAME[i]
-#   
-#   counties.lonlat2 <- rbind(counties.lonlat2, 
-#                             temp.lonlat)
-#   rm(temp.lonlat)
-# }
-
-
-#create a list of xy coordinates from hfa2 to transform
-trans_coords <- counties.lonlat2[,1:2]
-
-#coordinate transformation via projection
-pc <- ptransform(trans_coords/180*pi, 
-                 '+proj=latlong +ellps=sphere',
-                 '+proj=lcc +lat_1=34.33333333333334 +lat_2=36.16666666666666 +lat_0=33.75 +lon_0=-79.0 +x_0=609601.22 +y_0=0')
-
-counties.lonlat2$x2 <- pc$x
-counties.lonlat2$y2 <- pc$y
-
-
-# counties.lonlat2$County[counties.lonlat2$group == 1] <- "Lincoln"
-# counties.lonlat2$County[counties.lonlat2$group == 2] <- "Caldwell"
-# counties.lonlat2$County[counties.lonlat2$group == 6] <- "Irdell"
-# counties.lonlat2$County[counties.lonlat2$group == 5] <- "Rutherford"
-# counties.lonlat2$County[counties.lonlat2$group == 3] <- "Alexander"
-# counties.lonlat2$County[counties.lonlat2$group == 4] <- "Cleveland"
-# counties.lonlat2$County[counties.lonlat2$group == 7] <- "Catawba"
-# counties.lonlat2$County[counties.lonlat2$group == 9] <- "Burke"
-# counties.lonlat2$County[counties.lonlat2$group == 8] <- "Gaston"
-
-plot3 <- ggplot() + 
-  coord_fixed()+
-  geom_path(data = counties.all2,
-            aes(x = x2, y = y2, group = group, color = "Counties"),
-            #color = "grey") +
-  ) +
-  geom_path(data = state.lonlat2, 
-            aes(x = x2, y = y2, group = group), 
-            size = 1, 
-            color = "#2F747E")+
-  geom_polygon(data = nc.cgd_interim_df[nc.cgd_interim_df$district %in% 2,], 
-               aes(x = X, y = Y, group = district, fill = "Congressional\nDistricts"), 
-               #fill = "#2F747E", 
-               color = NA, 
-               alpha = 0.5)+
-  geom_path(data = counties.lonlat2[!counties.lonlat2$County %in% c("Gaston", "Lincoln", 
-                                                                    "Cleveland", "Caldwell"),], 
-            aes(x = x2, y = y2, group = group, 
-                color = "Selected Counties"),
-            size = 0.7, 
-            #color = "#2F747E")+
-  )+
-  theme(legend.position = "bottom", 
-        legend.direction = "vertical")+
-  scale_color_discrete(name = "Boundaries")+
-  scale_fill_discrete(name = "Boundaries")+
-  #theme_nothing()+
-  geom_point(data = major.cities2[major.cities2$NAME %in% 
-                                    c("Durham", "Raleigh", "Chapel Hill", "Greensboro", "Charlotte", 
-                                      "Fayetteville", "Asheville", 
-                                      "Winston-Salem", "High Point", 
-                                      "Wilmington", "Goldsboro", 
-                                      "New Bern", "Fayetteville", 
-                                      "Rocky Mount", "Rockingham", "Salisbury", 
-                                      "Statesville", "Hickory", 
-                                      "Shelby", "Hendersonville", "Morganton"),], 
-             aes(x = x2, y = y2, 
-                 color = "Select Cities")) 
-
-
-plot3 +
-  labs(title = "Rough Template - Congressional Districts Map", 
-       subtitle = "Showing what data is available")
-
-
-
-ggsave(filename = "NC_CongressionalDist_2022.eps", 
-       plot = plot3, device = "eps")
-
-ggsave(filename = "NC_CongressionalDist_2022.pdf", 
-       plot = plot3, device = "pdf")
-
-ggsave(filename = "NC_CongressionalDist_2022.ps", 
-       plot = plot3, device = "ps")
 
