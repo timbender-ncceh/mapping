@@ -322,3 +322,6 @@ for(i in unique(crosswalk_co_reg_dist$District)){
   
   file.remove(list.files(pattern = "^cd_plot.*EPS\\.eps$"))
 }
+
+
+
