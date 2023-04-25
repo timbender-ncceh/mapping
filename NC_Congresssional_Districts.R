@@ -239,9 +239,9 @@ for(i in unique(crosswalk_co_reg_dist$District)){
     #         color = "cyan", 
     #         linewidth = 1) + 
     geom_sf(data = census.state[!census.state$STUSPS %in% "NC",], 
-            fill = "light grey") + 
+            fill = NA)+ #"light grey") + 
     geom_sf(data = census.state[census.state$STUSPS == "NC",], 
-            fill = "dark grey") + 
+            fill = NA)+ #fill = "dark grey") + 
     geom_sf(data = ncceh.county_districts[ncceh.county_districts$District == i,],
             aes(fill = "NCCEH BoS Counties"), 
             color = "black") +
@@ -271,8 +271,8 @@ for(i in unique(crosswalk_co_reg_dist$District)){
           #legend.direction = "vertical", 
           axis.text = element_blank(), 
           axis.ticks = element_blank(), 
-          panel.background = element_rect(fill = "light blue"), 
-          panel.border = element_rect(color = "black", fill = NA))+
+          panel.background = element_rect(fill = NA, color = NA),#"light blue"), 
+          panel.border = element_rect(fill = NA, color = NA))+ #color = "black"))+
     scale_color_manual(name = NULL, 
                        values = c("black")) + 
     scale_fill_manual(name = NULL, 
